@@ -1,53 +1,80 @@
-// Backend (Node.js with Express)
-const express = require('express');
-const Clerk = require('@clerk/clerk-sdk-node').Clerk;
 require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const Canvas = require('./models/Canvas');
 
 const app = express();
-app.use(express.json()); // To parse JSON request bodies
+app.use(express.json());
+app.use(cors());
 
-const clerk = new Clerk(process.env.CLERK_SECRET_KEY);
+// Connect to MongoDB Atlas
+mongoose.connect(process.env.MONGODB_URI, { 
+  useNewUrlParser: true, 
+  useUnifiedTopology: true 
+})
+.then(() => console.log('Connected to MongoDB Atlas'))
+.catch(err => console.error('Connection error:', err));
 
-// Middleware to verify user authentication
-const requireAuth = async (req, res, next) => {
-    const sessionId = req.headers['authorization']; // Example: Retrieve sessionId from request header
-    console.log('sessionId', sessionId)
-    if (!sessionId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+// Save Canvas Endpoint
+app.post('/api/canvas', async (req, res) => {
+  try {
+    const { email, drawingName, canvasData } = req.body;
+    
+    const newCanvas = new Canvas({
+      email,
+      drawingName,
+      canvasData
+    });
 
-    try {
-        const verification = await clerk.verifySession(sessionId);
-        if (!verification) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        req.auth = verification; // Attach user info to the request
-        next();
-    } catch (error) {
-        console.log('error', error)
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-  };
-
-// Save canvas route
-app.post('/api/save-canvas', requireAuth, async (req, res) => {
-  const userId = req.auth.userId; // Extracted from clerk verification
-
-  const canvasData = req.body.canvasData;
-  // ... save canvas data to database, associated with userId ...
-  res.json({ success: true, message: 'Canvas saved' });
+    const savedCanvas = await newCanvas.save();
+    res.status(201).json(savedCanvas);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 });
 
-// Load canvas route
-app.get('/api/load-canvas', requireAuth, async (req, res) => {
-  const userId = req.auth.userId; // Extracted from clerk verification
-
-  // ... load canvas data from database, associated with userId ...
-  const canvasData = /* ... loaded canvas data ... */;
-  res.json({ success: true, canvasData });
+// Get Canvases by Email
+app.get('/api/canvas/:email', async (req, res) => {
+  try {
+    const canvases = await Canvas.find({ email: req.params.email })
+      .sort({ createdAt: -1 })
+      .select('drawingName createdAt');
+      
+    res.json(canvases);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
-app.listen(3000, () => {
-  console.log('Server listening on port 3000');
+// Get Canvas Data
+app.get('/api/canvas/:email/:drawingName', async (req, res) => {
+  try {
+    const canvas = await Canvas.findOne({
+      email: req.params.email,
+      drawingName: req.params.drawingName
+    });
+    
+    if (!canvas) return res.status(404).json({ message: 'Drawing not found' });
+    res.json(canvas.canvasData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
+
+const checkDbConnection = (req, res, next) => {
+  if (mongoose.connection.readyState === 1) {
+    next();
+  } else {
+    res.status(500).send('Database connection error');
+  }
+};
+
+app.get('/', checkDbConnection, (req, res) => {
+  res.send('API is running and connected to the database');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+module.exports = app;
