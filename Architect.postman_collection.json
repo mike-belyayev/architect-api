@@ -1,0 +1,100 @@
+{
+	"info": {
+		"_postman_id": "81b765b6-7b18-4400-9da7-995b569c65a8",
+		"name": "Architect",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12905035",
+		"_collection_link": "https://red-star-269258.postman.co/workspace/ShoppingList~178b1583-5ed6-4fd2-864d-10b8ae0e3ec6/collection/12905035-81b765b6-7b18-4400-9da7-995b569c65a8?action=share&source=collection_link&creator=12905035"
+	},
+	"item": [
+		{
+			"name": "Healthcheck",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://architect-api.vercel.app",
+					"protocol": "https",
+					"host": [
+						"architect-api",
+						"vercel",
+						"app"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Add drawing",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"email\": \"4xgood@gmail.com\",\r\n    \"drawingName\": \"myDrawing\",\r\n    \"canvasData\": \"data updated?\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://architect-api.vercel.app/canvas",
+					"protocol": "https",
+					"host": [
+						"architect-api",
+						"vercel",
+						"app"
+					],
+					"path": [
+						"canvas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Canvases for email",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://architect-api.vercel.app/canvas/4xgood@gmail.com",
+					"protocol": "https",
+					"host": [
+						"architect-api",
+						"vercel",
+						"app"
+					],
+					"path": [
+						"canvas",
+						"4xgood@gmail.com"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Canvas Data",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://architect-api.vercel.app/canvas/4xgood@gmail.com/myDrawing",
+					"protocol": "https",
+					"host": [
+						"architect-api",
+						"vercel",
+						"app"
+					],
+					"path": [
+						"canvas",
+						"4xgood@gmail.com",
+						"myDrawing"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

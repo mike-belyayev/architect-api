@@ -59,16 +59,26 @@ app.post('/canvas', async (req, res) => {
   try {
     const { email, drawingName, canvasData } = req.body;
     
-    const newCanvas = new Canvas({
-      email,
-      drawingName,
-      canvasData
-    });
+    // Find existing record or create new one
+    const updatedCanvas = await Canvas.findOneAndUpdate(
+      { email, drawingName },  // Filter
+      { email, drawingName, canvasData },  // Update data
+      { 
+        upsert: true,  // Create if doesn't exist
+        new: true,  // Return updated document
+        runValidators: true  // Validate schema on update
+      }
+    );
 
-    const savedCanvas = await newCanvas.save();
-    res.status(201).json(savedCanvas);
+    res.status(200).json({
+      message: updatedCanvas.isNew ? 'Created new drawing' : 'Updated existing drawing',
+      canvas: updatedCanvas
+    });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ 
+      message: 'Update failed',
+      error: error.message 
+    });
   }
 });
 
