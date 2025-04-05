@@ -59,24 +59,31 @@ app.post('/canvas', async (req, res) => {
   try {
     const { email, drawingName, canvasData } = req.body;
     
-    // Find existing record or create new one
+    // Get existing record before update
+    const existing = await Canvas.findOne({ email, drawingName });
+
+    // Perform update/creation
     const updatedCanvas = await Canvas.findOneAndUpdate(
-      { email, drawingName },  // Filter
-      { email, drawingName, canvasData },  // Update data
+      { email, drawingName },
+      { email, drawingName, canvasData },
       { 
-        upsert: true,  // Create if doesn't exist
-        new: true,  // Return updated document
-        runValidators: true  // Validate schema on update
+        upsert: true,
+        new: true,
+        runValidators: true
       }
     );
 
+    // Check if the document was created (no previous existence)
+    const wasCreated = !existing;
+
     res.status(200).json({
-      message: updatedCanvas.isNew ? 'Created new drawing' : 'Updated existing drawing',
+      message: wasCreated ? 'Created new drawing' : 'Updated existing drawing',
+      wasCreated,
       canvas: updatedCanvas
     });
   } catch (error) {
     res.status(400).json({ 
-      message: 'Update failed',
+      message: 'Operation failed',
       error: error.message 
     });
   }
