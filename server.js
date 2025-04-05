@@ -8,7 +8,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// ================== NEW CONNECTION HANDLING ==================
 let cached = global.mongoose;
 
 if (!cached) {
@@ -45,9 +44,7 @@ setInterval(() => {
     connectDB().catch(console.error);
   }
 }, 45000); // 45-second ping (under Vercel's 60s timeout)
-// ==============================================================
 
-// ================== UPDATED MIDDLEWARE ==================
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -57,17 +54,54 @@ app.use(async (req, res, next) => {
     res.status(500).json({ error: 'Database connection failed' });
   }
 });
-// ========================================================
 
-// Existing endpoints remain the same (no changes needed below)
-app.post('/canvas', async (req, res) => { /* ... */ });
-app.get('/canvas/:email', async (req, res) => { /* ... */ });
-app.get('/canvas/:email/:drawingName', async (req, res) => { /* ... */ });
+app.post('/canvas', async (req, res) => {
+  try {
+    const { email, drawingName, canvasData } = req.body;
+    
+    const newCanvas = new Canvas({
+      email,
+      drawingName,
+      canvasData
+    });
 
-// Simplified health check
+    const savedCanvas = await newCanvas.save();
+    res.status(201).json(savedCanvas);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+app.get('/canvas/:email', async (req, res) => {
+  try {
+    const canvases = await Canvas.find({ email: req.params.email })
+      .sort({ createdAt: -1 })
+      .select('drawingName createdAt');
+      
+    res.json(canvases);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get('/canvas/:email/:drawingName', async (req, res) => {
+  try {
+    const canvas = await Canvas.findOne({
+      email: req.params.email,
+      drawingName: req.params.drawingName
+    });
+    
+    if (!canvas) return res.status(404).json({ message: 'Drawing not found' });
+    res.json(canvas.canvasData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Hhealth check
 app.get('/', (req, res) => {
   res.send(mongoose.connection.readyState === 1 
-    ? 'API connected to MongoDB'
+    ? 'API is Ready'
     : 'Connection pending'
   );
 });
