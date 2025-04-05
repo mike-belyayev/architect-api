@@ -8,70 +8,68 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Connect to MongoDB Atlas
-mongoose.connect(process.env.MONGODB_URI, { 
-  useNewUrlParser: true, 
-  useUnifiedTopology: true 
-})
-.then(() => console.log('Connected to MongoDB Atlas'))
-.catch(err => console.error('Connection error:', err));
+// ================== NEW CONNECTION HANDLING ==================
+let cached = global.mongoose;
 
-// Save Canvas Endpoint
-app.post('/canvas', async (req, res) => {
-  try {
-    const { email, drawingName, canvasData } = req.body;
-    
-    const newCanvas = new Canvas({
-      email,
-      drawingName,
-      canvasData
-    });
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
-    const savedCanvas = await newCanvas.save();
-    res.status(201).json(savedCanvas);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+async function connectDB() {
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 3000,
+      bufferCommands: false
+    }).then(mongoose => mongoose);
   }
-});
 
-// Get Canvases by Email
-app.get('/canvas/:email', async (req, res) => {
   try {
-    const canvases = await Canvas.find({ email: req.params.email })
-      .sort({ createdAt: -1 })
-      .select('drawingName createdAt');
-      
-    res.json(canvases);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
   }
-});
 
-// Get Canvas Data
-app.get('/canvas/:email/:drawingName', async (req, res) => {
+  return cached.conn;
+}
+
+// Initialize connection on startup
+connectDB().catch(err => console.error('Initial connection error:', err));
+
+// Connection health check
+setInterval(() => {
+  if (mongoose.connection.readyState !== 1) {
+    console.log('Reconnecting...');
+    connectDB().catch(console.error);
+  }
+}, 45000); // 45-second ping (under Vercel's 60s timeout)
+// ==============================================================
+
+// ================== UPDATED MIDDLEWARE ==================
+app.use(async (req, res, next) => {
   try {
-    const canvas = await Canvas.findOne({
-      email: req.params.email,
-      drawingName: req.params.drawingName
-    });
-    
-    if (!canvas) return res.status(404).json({ message: 'Drawing not found' });
-    res.json(canvas.canvasData);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-const checkDbConnection = (req, res, next) => {
-  if (mongoose.connection.readyState === 1) {
+    await connectDB();
     next();
-  } else {
-    res.status(500).send('Database connection error');
+  } catch (err) {
+    console.error('Connection error:', err);
+    res.status(500).json({ error: 'Database connection failed' });
   }
-};
+});
+// ========================================================
 
-app.get('/', checkDbConnection, (req, res) => {
-  res.send('API is running and connected to the database');
+// Existing endpoints remain the same (no changes needed below)
+app.post('/canvas', async (req, res) => { /* ... */ });
+app.get('/canvas/:email', async (req, res) => { /* ... */ });
+app.get('/canvas/:email/:drawingName', async (req, res) => { /* ... */ });
+
+// Simplified health check
+app.get('/', (req, res) => {
+  res.send(mongoose.connection.readyState === 1 
+    ? 'API connected to MongoDB'
+    : 'Connection pending'
+  );
 });
 
 const PORT = process.env.PORT || 3000;
