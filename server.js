@@ -17,7 +17,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 .catch(err => console.error('Connection error:', err));
 
 // Save Canvas Endpoint
-app.post('/api/canvas', async (req, res) => {
+app.post('/canvas', async (req, res) => {
   try {
     const { email, drawingName, canvasData } = req.body;
     
@@ -35,7 +35,7 @@ app.post('/api/canvas', async (req, res) => {
 });
 
 // Get Canvases by Email
-app.get('/api/canvas/:email', async (req, res) => {
+app.get('/canvas/:email', async (req, res) => {
   try {
     const canvases = await Canvas.find({ email: req.params.email })
       .sort({ createdAt: -1 })
@@ -48,7 +48,7 @@ app.get('/api/canvas/:email', async (req, res) => {
 });
 
 // Get Canvas Data
-app.get('/api/canvas/:email/:drawingName', async (req, res) => {
+app.get('/canvas/:email/:drawingName', async (req, res) => {
   try {
     const canvas = await Canvas.findOne({
       email: req.params.email,
